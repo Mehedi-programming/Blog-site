@@ -30,6 +30,26 @@ def Signup(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# Signin
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+def Signin(request):
+    serializer = SigninSerializser(data=request.data)
+    if serializer.is_valid():
+        username =serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        user = authenticate(User, username=username, password=password)
+        credentials = {"username":username}
+        
+        if AxesProxyHandler.is_locked(request,credentials):
+            return Response({"message":"Your account is locked for 20 minutes."}, status=status.HTTP_403_FORBIDDEN)
+        if user:
+            reset(username=username)
+            token = get_tokens_for_user(user)
+            return Response({"access_token":token['access'], "refresh_token":token['refresh']}, status=status.HTTP_201_CREATED)
+        return Response ({"message":"Inavalid username or pasword."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
