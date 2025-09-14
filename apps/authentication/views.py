@@ -74,6 +74,76 @@ def change_password(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# reset password
+@api_view(['POST'])
+def reset_password(request):
+    serializer = ResetpasswordSerializer(data=request.data)
+    if serializer.is_valid():
+        email =serializer.validated_data['email']
+        user = get_object_or_404(User, email=email) 
+        if user:
+            otp = otp_generate()
+            hashed = otp_hash(otp)
+            Otp.objects.create(
+                user=user,
+                hash_otp=hashed,
+                expired_at= expired_at(),
+                is_used=False
+            )
+            print(f"Your OTP is {otp}")
+            return Response({"message":"Your OTP generated successfully."}, status=status.HTTP_200_OK)
+        return Response({"message":"Your email does not exists"}, status=status.HTTP_401_UNAUTHORIZED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# verify otp
+@api_view(['POST'])
+def verify_otp(request):
+    serializer = VerifyOtpSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        otp = serializer.validated_data['otp']
+        try:
+            user = User.objects.get(email=email)
+            otp_obj= Otp.objects.get(user, is_used=False)
+        except Exception as e:
+            return Response({"message":"Invalid email or otp"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_obj.expired_at < timezone.now():
+            return Response({"message":"Your otp is expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_obj.hash_otp !=otp_hash(otp):
+            return Response({"message":"Your otp is not valid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message":"Otp verified."}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# set password
+@api_view(['POST'])
+def set_password(request):
+    serializer = SetPasswordSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['passsword']
+        try:
+            user = User.objects.get(email=email)
+            otp_obj = Otp.objects.get(user=user, is_used=False)
+        except Exception as e:
+            return Response({"message":"Invalid email or otp"}, status=status.HTTP_400_BAD_REQUEST) 
+
+        if otp_obj.expired_at <timezone.now():
+            return Response({"message":"Your otp is expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(password)
+        user.save()
+        otp_obj.is_used = True       
+        reset(username=user.username)
+        RefreshToken.for_user(user)
+        return Response({"message":"Password set successfully."}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
         
