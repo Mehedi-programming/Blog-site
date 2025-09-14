@@ -52,6 +52,29 @@ def Signin(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# change password
+@api_view(['POST'])
+def change_password(request):
+    serializer = ChangePasswordSerializer(data=request.data)
+    if serializer.is_valid():
+        old_password = serializer.validated_data['old_password']
+        new_password = serializer.validated_data['new_passwoed']
+        user = User.objects.get(id=request.user.id)
+
+        if not user.check_password(old_password):
+            return Response ({"message":"Your password is not correct."}, status=status.HTTP_400_BAD_REQUEST)
+        if old_password == new_password:
+            return Response({"message":"New password cannot be same as old passsword."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.set_password(new_password)
+        user.save()
+        reset(username=user.username)
+        RefreshToken.for_user(user)
+        return Response({"message":"Password changed successfully."}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
         
 
