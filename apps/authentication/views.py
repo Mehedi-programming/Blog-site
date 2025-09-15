@@ -16,7 +16,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 # Create your views here.
-def Signup(request):
+def signup(request):
     serializer = SignupSerializer(data = request.data)
     if serializer.is_valid():
         User.objects.create_user(
@@ -32,9 +32,7 @@ def Signup(request):
 
 # Signin
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@authentication_classes([JWTAuthentication])
-def Signin(request):
+def signin(request):
     serializer = SigninSerializser(data=request.data)
     if serializer.is_valid():
         username =serializer.validated_data['username']
@@ -54,6 +52,8 @@ def Signin(request):
 
 # change password
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
 def change_password(request):
     serializer = ChangePasswordSerializer(data=request.data)
     if serializer.is_valid():
